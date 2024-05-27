@@ -9,7 +9,7 @@ module RemoteSyslogLogger
       @whinyerrors     = options[:whinyerrors]
       @max_size        = options[:max_size]
       
-      @socket = UDPSocket.new
+      create_socket_if_blank_or_closed
       @packet = SyslogProtocol::Packet.new
 
       local_hostname   = options[:local_hostname] || (Socket.gethostname rescue `hostname`.chomp)
@@ -28,6 +28,7 @@ module RemoteSyslogLogger
           packet = @packet.dup
           packet.content = line
           payload = @max_size ? packet.assemble(@max_size) : packet.assemble
+          create_socket_if_blank_or_closed
           @socket.send(payload, 0, @remote_hostname, @remote_port)
         rescue
           $stderr.puts "#{self.class} error: #{$!.class}: #{$!}\nOriginal message: #{line}"
@@ -41,6 +42,12 @@ module RemoteSyslogLogger
     
     def close
       @socket.close
+    end
+
+    private
+
+    def create_socket_if_blank_or_closed
+      @socket = UDPSocket.new if @socket.blank? || @socket.closed?
     end
   end
 end
